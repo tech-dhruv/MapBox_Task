@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "116419875025",
+    "project_id": "usdt-miner-machine",
+    "storage_bucket": "usdt-miner-machine.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:116419875025:android:14d21bb78d5e0078ee35f0",
+        "android_client_info": {
+          "package_name": "com.example.mapbox_task"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRR0LGxGW2c7j6KN00Ip2XF0n4RFORog8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:116419875025:android:70276d2355c57ecbee35f0",
+        "android_client_info": {
+          "package_name": "com.minermachine.usdtminermachine"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRR0LGxGW2c7j6KN00Ip2XF0n4RFORog8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
