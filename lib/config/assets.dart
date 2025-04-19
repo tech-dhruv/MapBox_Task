@@ -17,28 +17,36 @@ class Assets {
 
   //map markers assests
   static String BLUE_PIN = IMAGES + 'blue-marker.png';
-  static String VISIT_PURPLE_PIN = IMAGES + 'visit-purple.svg';
+  static String VISIT_PURPLE_PIN = IMAGES + 'visit-purple.png';
 
   //customer-store markers assests
 
   //bronze
-  static String BRONZE_GRAY = IMAGES + 'bronze-gray.svg';
-  static String BRONZE_GREEN = IMAGES + 'bronze-green.svg';
-  static String BRONZE_RED = IMAGES + 'bronze-red.svg';
-  static String BRONZE_YELLOW = IMAGES + 'bronze-yellow.svg';
+  static String BRONZE_GRAY = IMAGES + 'bronze-gray.png';
+  static String BRONZE_GREEN = IMAGES + 'bronze-green.png';
+  static String BRONZE_RED = IMAGES + 'bronze-red.png';
+  static String BRONZE_YELLOW = IMAGES + 'bronze-yellow.png';
 
   //silver
-  static String SILVER_GRAY = IMAGES + 'silver-gray.svg';
-  static String SILVER_GREEN = IMAGES + 'silver-green.svg';
-  static String SILVER_RED = IMAGES + 'silver-red.svg';
-  static String SILVER_YELLOW = IMAGES + 'silver-yellow.svg';
+  static String SILVER_GRAY = IMAGES + 'silver-gray.png';
+  static String SILVER_GREEN = IMAGES + 'silver-green.png';
+  static String SILVER_RED = IMAGES + 'silver-red.png';
+  static String SILVER_YELLOW = IMAGES + 'silver-yellow.png';
 
   //gold
-  static String GOLD_GRAY = IMAGES + 'gold-gray.svg';
-  static String GOLD_GREEN = IMAGES + 'gold-green.svg';
-  static String GOLD_RED = IMAGES + 'gold-red.svg';
-  static String GOLD_YELLOW = IMAGES + 'gold-yellow.svg';
+  static String GOLD_GRAY = IMAGES + 'gold-gray.png';
+  static String GOLD_GREEN = IMAGES + 'gold-green.png';
+  static String GOLD_RED = IMAGES + 'gold-red.png';
+  static String GOLD_YELLOW = IMAGES + 'gold-yellow.png';
+  
+  //cluster markers
+  static String BRONZE_CLUSTER = IMAGES + 'bronze-cluster.png';
+  static String SILVER_CLUSTER = IMAGES + 'silver-cluster.png';
+  static String GOLD_CLUSTER = IMAGES + 'gold-cluster.png';
 
   // Icons
   static String ICON = ICONS + "app_icon.png";
+
+  // Cluster marker images
+  static String STORE_CLUSTER_MARKER = IMAGES + 'store_cluster_pin.png';
 }
