@@ -26,7 +26,6 @@ class _SplashScreenState extends State<SplashScreen> {
     // TODO: implement initState
     super.initState();
     _userProvider = Provider.of<UserProvider>(context, listen: false);
-
     Future.delayed(
       const Duration(seconds: 3),
       () {

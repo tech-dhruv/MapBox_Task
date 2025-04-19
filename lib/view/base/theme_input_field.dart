@@ -37,7 +37,9 @@ class ThemeInputField extends StatefulWidget {
       this.height = 42,
       this.showBorder = false,
       this.maxLines = 1,
-      this.onChange})
+      this.onChange,
+      this.cursorColor = ColorPallet.blackColor,
+      this.cursorHeight = 20})
       : super(key: key);
   final String hint;
   final String? initialValue;
@@ -69,6 +71,8 @@ class ThemeInputField extends StatefulWidget {
   final Function(String)? onChange;
   final bool showShadow;
   final double height;
+  final Color cursorColor;
+  final double cursorHeight;
 
   final bool separatorVisible;
 
@@ -97,6 +101,8 @@ class _ThemeInputFieldState extends State<ThemeInputField> {
               ],
               Expanded(
                 child: TextFormField(
+                  cursorColor: widget.cursorColor,
+                  cursorHeight: widget.cursorHeight,
                   readOnly: widget.readOnly,
                   controller: widget.controller,
                   initialValue: widget.initialValue,
@@ -130,7 +136,7 @@ class _ThemeInputFieldState extends State<ThemeInputField> {
                     hintStyle: widget.hintStyle ??
                         TextStyles.bodyText2(color: ColorPallet.greyColor),
                     // errorText: "",
-                    errorStyle: const TextStyle(height: 0, fontSize: 0),
+                    errorStyle: const TextStyle(fontSize: 0),
                   ),
                 ),
               ),
