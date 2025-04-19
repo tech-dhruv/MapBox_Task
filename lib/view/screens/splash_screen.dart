@@ -1,8 +1,7 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:mapbox_task/routes/app_routes.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/app_constants.dart';
 import '../../config/assets.dart';
@@ -27,11 +26,12 @@ class _SplashScreenState extends State<SplashScreen> {
     // TODO: implement initState
     super.initState();
     _userProvider = Provider.of<UserProvider>(context, listen: false);
-    final currentUser = FirebaseAuth.instance.currentUser;
+
     Future.delayed(
-      const Duration(seconds: 2),
+      const Duration(seconds: 3),
       () {
-        context.router.replace(const OnBoardingRoute());
+        // context.router.replace(const OnBoardingRoute());
+        context.router.replace(const HomeRoute());
       },
     );
   }

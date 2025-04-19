@@ -33,12 +33,6 @@ abstract class _$AppRoutes extends RootStackRouter {
         child: const OnBoardingScreen(),
       );
     },
-    SecondRoute.name: (routeData) {
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: const SecondScreen(),
-      );
-    },
     SplashRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -86,20 +80,6 @@ class OnBoardingRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'OnBoardingRoute';
-
-  static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [SecondScreen]
-class SecondRoute extends PageRouteInfo<void> {
-  const SecondRoute({List<PageRouteInfo>? children})
-      : super(
-          SecondRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'SecondRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

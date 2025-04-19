@@ -8,7 +8,7 @@ import 'text_style.dart';
 class Style {
   static ThemeData appTheme = ThemeData(
     primaryColor: ColorPallet.primaryColor,
-    scaffoldBackgroundColor: ColorPallet.backgroundColor,
+    scaffoldBackgroundColor: ColorPallet.primaryColor,
     fontFamily: AppConstants.FONT_FAMILY,
     appBarTheme: const AppBarTheme(
       backgroundColor: ColorPallet.transparent,

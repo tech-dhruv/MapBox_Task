@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_task/view/screens/home/home_screen.dart';
 import 'package:mapbox_task/view/screens/no_internet/no_internet.dart';
 import 'package:mapbox_task/view/screens/onBoarding_screen.dart';
-import 'package:mapbox_task/view/screens/second/second_screen.dart';
 
 import '../view/screens/splash_screen.dart';
 
@@ -19,7 +18,6 @@ class Routes {
   static const String SPLASH_SCREEN = "/";
   static const String HOME = "/Home";
   static const String ON_BOARDING = "/OnBoarding";
-  static const String SECOND_SCREEN = "/SECOND_SCREEN";
   static const String NO_INTERNET = "/NO_INTERNET";
 }
 
@@ -30,7 +28,6 @@ class AppRoutes extends _$AppRoutes {
          AutoRoute(path: Routes.SPLASH_SCREEN,page: SplashRoute.page, initial: true),
         AutoRoute(path: Routes.ON_BOARDING, page: OnBoardingRoute.page),
         AutoRoute(path: Routes.HOME, page: HomeRoute.page),
-        AutoRoute(path: Routes.SECOND_SCREEN, page: SecondRoute.page),
         AutoRoute(path: Routes.NO_INTERNET, page: NoInternetRoute.page),
       ];
 }
