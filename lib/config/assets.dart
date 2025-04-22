@@ -38,15 +38,10 @@ class Assets {
   static String GOLD_GREEN = IMAGES + 'gold-green.png';
   static String GOLD_RED = IMAGES + 'gold-red.png';
   static String GOLD_YELLOW = IMAGES + 'gold-yellow.png';
-  
-  //cluster markers
-  static String BRONZE_CLUSTER = IMAGES + 'bronze-cluster.png';
-  static String SILVER_CLUSTER = IMAGES + 'silver-cluster.png';
-  static String GOLD_CLUSTER = IMAGES + 'gold-cluster.png';
+
+  // Cluster marker image
+  static String STORE_CLUSTER_MARKER = IMAGES + 'store_cluster_pin.png';
 
   // Icons
   static String ICON = ICONS + "app_icon.png";
-
-  // Cluster marker images
-  static String STORE_CLUSTER_MARKER = IMAGES + 'store_cluster_pin.png';
 }

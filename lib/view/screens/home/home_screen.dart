@@ -8,6 +8,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:mapbox_task/config/color.dart';
 import 'package:mapbox_task/config/text_style.dart';
 import 'package:mapbox_task/providers/connectivity_provider.dart';
+import 'package:mapbox_task/providers/map_provider.dart';
 import 'package:mapbox_task/utility/toast_service.dart';
 import 'package:mapbox_task/view/base/theme_button.dart';
 import 'package:mapbox_task/view/base/theme_input_field.dart';
@@ -25,10 +26,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isInit = true;
   late ConnectivityProvider _connectivityProvider;
+  late MapProvider _mapProvider;
 
   mb.MapboxMap? mapboxMapController;
   StreamSubscription? userPositionStream;
   gl.Position? _currentPosition;
+  final GlobalKey _filterKey = GlobalKey();
+  
+  // Timer to periodically check the zoom level
+  Timer? _zoomCheckTimer;
+  double _currentZoom = 10.0;
 
   @override
   void didChangeDependencies() async {
@@ -37,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isInit = false;
       _setupPositionTracking();
       _connectivityProvider = Provider.of<ConnectivityProvider>(context);
+      _mapProvider = Provider.of<MapProvider>(context);
       _connectivityProvider.initConnectivity(mounted);
       _connectivityProvider.connectivitySubscription = _connectivityProvider
           .connectivity.onConnectivityChanged
@@ -56,17 +64,18 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     userPositionStream?.cancel();
+    _zoomCheckTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ConnectivityProvider>(
-      builder: (consumerContext, provider, child) {
-        return (provider.connectionStatus == ConnectivityResult.mobile ||
-                provider.connectionStatus == ConnectivityResult.wifi ||
-                provider.connectionStatus == ConnectivityResult.ethernet ||
-                provider.connectionStatus == ConnectivityResult.vpn)
+    return Consumer2<ConnectivityProvider, MapProvider>(
+      builder: (consumerContext, connectivityProvider, mapProvider, child) {
+        return (connectivityProvider.connectionStatus == ConnectivityResult.mobile ||
+                connectivityProvider.connectionStatus == ConnectivityResult.wifi ||
+                connectivityProvider.connectionStatus == ConnectivityResult.ethernet ||
+                connectivityProvider.connectionStatus == ConnectivityResult.vpn)
             ? SafeArea(
                 bottom: true,
                 top: true,
@@ -101,28 +110,40 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(width: 10),
                               CCIconButton(
+                                key: _filterKey,
                                 buttonHeight: 50,
                                 buttonWidth: 50,
                                 shadow: false,
-                                onTap: () {},
-                                icon: Icon(Icons.filter_alt_outlined,color: ColorPallet.whiteColor,),
+                                onTap: _showFilterMenu,
+                                icon: Icon(Icons.filter_alt_outlined, color: ColorPallet.whiteColor),
                               ),
                             ],
                           ),
                         ),
                       ),
+                      if (mapProvider.isLoading)
+                        const Center(
+                          child: CircularProgressIndicator(
+                            color: ColorPallet.primaryColor,
+                          ),
+                        ),
                     ],
                   ),
-                  floatingActionButton: FloatingActionButton(
-                    heroTag: 'my_location',
-                    shape: const CircleBorder(),
-                    onPressed: _goToMyLocation,
-                    backgroundColor:
-                        ColorPallet.secondaryColor.withOpacity(0.8),
-                    child: const Icon(
-                      Icons.my_location,
-                      color: Colors.white,
-                    ),
+                  floatingActionButton: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'my_location',
+                        shape: const CircleBorder(),
+                        onPressed: _goToMyLocation,
+                        backgroundColor: ColorPallet.secondaryColor.withOpacity(0.8),
+                        child: const Icon(
+                          Icons.my_location,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               )
@@ -135,7 +156,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       mapboxMapController = controller;
     });
+    
+    // Set the controller in the map provider
+    Provider.of<MapProvider>(context, listen: false).setMapboxMap(controller);
 
+    // Set up location component
     mapboxMapController?.location.updateSettings(
       mb.LocationComponentSettings(
         enabled: true,
@@ -162,6 +187,92 @@ class _HomeScreenState extends State<HomeScreen> {
         position: mb.OrnamentPosition.TOP_LEFT,
         marginTop: 70.0,
         marginLeft: 16.0,
+      ),
+    );
+    
+    // Get initial zoom level
+    mapboxMapController?.getCameraState().then((state) {
+      _currentZoom = state.zoom;
+    });
+    
+    // Start periodic zoom check
+    _startZoomCheck();
+    
+    // Load stores data from JSON
+    _loadStoresData();
+  }
+
+  // Periodically check zoom level to update markers when needed
+  void _startZoomCheck() {
+    _zoomCheckTimer?.cancel();
+    _zoomCheckTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (mapboxMapController != null) {
+        mapboxMapController!.getCameraState().then((state) {
+          final newZoom = state.zoom;
+          
+          // Check if we crossed the threshold for clustering
+          if ((_currentZoom < 10 && newZoom >= 10) || (_currentZoom >= 10 && newZoom < 10)) {
+            _currentZoom = newZoom;
+            Provider.of<MapProvider>(context, listen: false).loadMarkers();
+          } else {
+            _currentZoom = newZoom;
+          }
+        });
+      }
+    });
+  }
+  
+  Future<void> _loadStoresData() async {
+    await Provider.of<MapProvider>(context, listen: false).fetchStores();
+  }
+  
+  void _showFilterMenu() {
+    final RenderBox renderBox = _filterKey.currentContext!.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy + size.height,
+        position.dx + size.width,
+        position.dy + size.height,
+      ),
+      items: [
+        _buildFilterMenuItem('Bronze Stores', Consumer<MapProvider>(
+          builder: (context, mapProvider, _) => Checkbox(
+            value: mapProvider.showBronzeStores,
+            onChanged: (_) => mapProvider.toggleBronzeStores(),
+          ),
+        )),
+        _buildFilterMenuItem('Silver Stores', Consumer<MapProvider>(
+          builder: (context, mapProvider, _) => Checkbox(
+            value: mapProvider.showSilverStores,
+            onChanged: (_) => mapProvider.toggleSilverStores(),
+          ),
+        )),
+        _buildFilterMenuItem('Gold Stores', Consumer<MapProvider>(
+          builder: (context, mapProvider, _) => Checkbox(
+            value: mapProvider.showGoldStores,
+            onChanged: (_) => mapProvider.toggleGoldStores(),
+          ),
+        )),
+      ],
+      elevation: 8.0,
+      color: ColorPallet.secondaryDarkBlackColor,
+    );
+  }
+  
+  PopupMenuItem<String> _buildFilterMenuItem(String title, Widget trailing) {
+    return PopupMenuItem<String>(
+      value: title,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: TextStyles.bodyText2(color: ColorPallet.whiteColor)),
+          trailing,
+        ],
       ),
     );
   }
@@ -198,7 +309,6 @@ class _HomeScreenState extends State<HomeScreen> {
         gl.Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((gl.Position? position) {
       if (position != null && mapboxMapController != null) {
-        print('Current Position===> $position');
         _currentPosition = position;
         mapboxMapController?.setCamera(
           mb.CameraOptions(
@@ -226,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           zoom: 15,
-          bearing: 45,
+          bearing: 0,
           pitch: 0,
         ),
         mb.MapAnimationOptions(duration: 1000),
@@ -244,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             zoom: 15,
-            bearing: 45,
+            bearing: 0,
             pitch: 0,
           ),
           mb.MapAnimationOptions(duration: 1000),
