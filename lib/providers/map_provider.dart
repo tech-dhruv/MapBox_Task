@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:mapbox_task/models/stores_model.dart';
-import 'package:mapbox_task/services/marker_service.dart';
-import 'package:mapbox_task/utility/marker_helper.dart';
 
 class MapProvider extends ChangeNotifier {
   List<Stores> stores = [];
