@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_task/routes/app_routes.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/app_constants.dart';
 import '../../config/assets.dart';
@@ -29,10 +30,19 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(
       const Duration(seconds: 3),
       () {
-        // context.router.replace(const OnBoardingRoute());
-        context.router.replace(const HomeRoute());
+        navigateToNext();
       },
     );
+  }
+
+  void navigateToNext() async {
+    SharedPreferences pref = await SharedPreferences.getInstance();
+    final isBoardingCompleted = pref.getBool(AppConstants.ONBOARDING_DONE) ?? false;
+    if(isBoardingCompleted){
+      context.router.replace(const HomeRoute());
+    }else {
+      context.router.replace(const OnBoardingRoute());
+    }
   }
 
   @override

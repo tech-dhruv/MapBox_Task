@@ -1,10 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mapbox_task/config/assets.dart';
 import 'package:mapbox_task/config/color.dart';
+import 'package:mapbox_task/routes/app_routes.dart';
 import 'package:mapbox_task/view/base/bg_container.dart';
 import 'package:mapbox_task/view/base/theme_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/app_constants.dart';
 import '../../config/di_container.dart';
@@ -89,7 +90,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                   if (liveIndex == 3) {
                     sl<SharedPreferences>()
                         .setBool(AppConstants.ONBOARDING_DONE, true);
-                    // context.router.replace(const SignupRoute());
+                    context.router.replace(const HomeRoute());
                   } else {
                     _pageController.nextPage(
                       duration: const Duration(milliseconds: 200),
@@ -127,21 +128,21 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                 children: [
                   _buildPageContent(
                     image: Assets.ONBOARDING_1,
-                    title: 'Hey! Welcome',
+                    title: 'Visualize Your Stores Like Never Before',
                     subtitle:
-                        'We provide you the best mining experience\nwith our simulation app ',
+                        'Get powerful insights with interactive maps tailored to Stores performance.',
                   ),
                   _buildPageContent(
                     image: Assets.ONBOARDING_2,
-                    title: 'Boost Rig Performance',
+                    title: 'Filter & Analyze with Ease',
                     subtitle:
-                        'Boost the Rig performance by increasing time\nand boost energy',
+                        'Slice your data by region, category, or\nperformance to spot trends in seconds.',
                   ),
                   _buildPageContent(
                     image: Assets.ONBOARDING_3,
-                    title: 'Flip & Win Super Coins',
+                    title: 'Track, Customize & Explore',
                     subtitle:
-                        'Win Super coins by playing a simple Flip & Win\ngame',
+                        'Use custom markers, find your location instantly,\nand make the map truly yours.',
                   ),
                 ],
               ),
@@ -190,22 +191,28 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
             ),
           ),
           SizedBox(height: height * .1),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w600,
-                color: ColorPallet.whiteColor),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18.0),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                  color: ColorPallet.whiteColor),
+            ),
           ),
           SizedBox(height: height * .02),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: ColorPallet.whiteColor),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: ColorPallet.whiteColor),
+            ),
           ),
         ],
       ),
