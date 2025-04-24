@@ -3,9 +3,9 @@
     {
       "id": "baf67c56-f793-452d-8156-44f776112973",
       "__typename": "Store",
-      "caseVolumeLTM": null,
+      "caseVolumeLTM": 20.00,
       "caseVolume2024": null,
-      "cirocCases": null,
+      "cirocCases": 40,
       "percentile": null,
       "geoLocation": {
         "latitude": 29.50032326360244,
@@ -16,7 +16,7 @@
     {
       "id": "fcdf3872-2e30-4511-b067-6e6b91924ca8",
       "__typename": "Store",
-      "caseVolumeLTM": null,
+      "caseVolumeLTM": 20.00,
       "caseVolume2024": null,
       "cirocCases": 51.689088,
       "percentile": 44.50459123815914,

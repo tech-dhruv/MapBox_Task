@@ -26,7 +26,7 @@ class MapProvider extends ChangeNotifier {
       
       // Update the stores list
       if (storeModel.stores != null) {
-        stores = storeModel.stores!;
+        stores = storeModel.stores!.take(200).toList();
         print('All stores loaded: ${stores.length} (memory only, not displayed yet)');
       }
 
