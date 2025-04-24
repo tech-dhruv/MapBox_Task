@@ -16,7 +16,7 @@ class Assets {
   static String ONBOARDING_3 = IMAGES + "onboarding_3.png";
 
   //map markers assests
-  static String BLUE_PIN = IMAGES + 'blue-marker.png';
+  static String BLUE_CUSTOMER_PIN = IMAGES + 'blue-marker.png';
   static String VISIT_PURPLE_PIN = IMAGES + 'visit-purple.png';
 
   //customer-store markers assests
@@ -38,15 +38,8 @@ class Assets {
   static String GOLD_GREEN = IMAGES + 'gold-green.png';
   static String GOLD_RED = IMAGES + 'gold-red.png';
   static String GOLD_YELLOW = IMAGES + 'gold-yellow.png';
-  
-  //cluster markers
-  static String BRONZE_CLUSTER = IMAGES + 'bronze-cluster.png';
-  static String SILVER_CLUSTER = IMAGES + 'silver-cluster.png';
-  static String GOLD_CLUSTER = IMAGES + 'gold-cluster.png';
 
   // Icons
   static String ICON = ICONS + "app_icon.png";
 
-  // Cluster marker images
-  static String STORE_CLUSTER_MARKER = IMAGES + 'store_cluster_pin.png';
 }
