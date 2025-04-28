@@ -9,6 +9,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:mapbox_task/config/assets.dart';
 import 'package:mapbox_task/config/color.dart';
 import 'package:mapbox_task/config/text_style.dart';
+import 'package:mapbox_task/models/stores_model.dart';
 import 'package:mapbox_task/providers/connectivity_provider.dart';
 import 'package:mapbox_task/providers/map_provider.dart';
 import 'package:mapbox_task/utility/marker_helper.dart';
@@ -32,11 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
   late MapProvider _mapProvider;
 
   mb.MapboxMap? mapboxMapController;
-  mb.PointAnnotationManager? pointAnnotationManager;
+  mb.PointAnnotationManager? bronzeAnnotationManager;
+  mb.PointAnnotationManager? silverAnnotationManager;
+  mb.PointAnnotationManager? goldAnnotationManager;
+  
   StreamSubscription? userPositionStream;
   gl.Position? _currentPosition;
   bool _storesLoaded = false;
-  bool _hideMarkers = false;
   
   // Cache for marker images to avoid reloading same assets
   final Map<String, Uint8List> _markerImageCache = {};
@@ -128,40 +131,127 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
+                      // Store category selection buttons
+                      Positioned(
+                        bottom: 20,
+                        left: 10,
+                        right: 10,
+                        child: Consumer<MapProvider>(
+                          builder: (context, mapProvider, _) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                              decoration: BoxDecoration(
+                                color: ColorPallet.secondaryDarkBlackColor.withOpacity(0.85),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Store Categories',
+                                    style: TextStyles.bodyText1(color: ColorPallet.whiteColor),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      _buildCategoryToggle(
+                                        'Bronze', 
+                                        Assets.BRONZE_GRAY, 
+                                        mapProvider.showBronzeStores,
+                                        () => _toggleCategory('bronze'),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _buildCategoryToggle(
+                                        'Silver', 
+                                        Assets.SILVER_GRAY, 
+                                        mapProvider.showSilverStores,
+                                        () => _toggleCategory('silver'),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _buildCategoryToggle(
+                                        'Gold', 
+                                        Assets.GOLD_GRAY, 
+                                        mapProvider.showGoldStores,
+                                        () => _toggleCategory('gold'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
-                  floatingActionButton: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      FloatingActionButton(
-                        heroTag: 'toggle_markers',
-                        shape: const CircleBorder(),
-                        onPressed: _toggleMarkerDisplay,
-                        backgroundColor: ColorPallet.secondaryColor.withOpacity(0.8),
-                        child: Icon(
-                          _hideMarkers ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      FloatingActionButton(
-                        heroTag: 'my_location',
-                        shape: const CircleBorder(),
-                        onPressed: _goToMyLocation,
-                        backgroundColor:
-                            ColorPallet.secondaryColor.withOpacity(0.8),
-                        child: const Icon(
-                          Icons.my_location,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                  floatingActionButton: FloatingActionButton(
+                    heroTag: 'my_location',
+                    shape: const CircleBorder(),
+                    onPressed: _goToMyLocation,
+                    backgroundColor: ColorPallet.secondaryColor.withOpacity(0.8),
+                    child: const Icon(
+                      Icons.my_location,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               )
             : const NoInternetScreen();
       },
     );
+  }
+
+  Widget _buildCategoryToggle(String label, String iconAsset, bool isActive, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? ColorPallet.secondaryColor.withOpacity(0.3) : Colors.transparent,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: isActive ? ColorPallet.secondaryColor : ColorPallet.whiteColor.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Image.asset(
+                iconAsset,
+                height: 30,
+                width: 30,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: TextStyles.bodyText3(
+                  color: isActive ? ColorPallet.whiteColor : ColorPallet.whiteColor.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggleCategory(String category) {
+    switch (category) {
+      case 'bronze':
+        _mapProvider.toggleBronzeStores();
+        _updateBronzeMarkers();
+        break;
+      case 'silver':
+        _mapProvider.toggleSilverStores();
+        _updateSilverMarkers();
+        break;
+      case 'gold':
+        _mapProvider.toggleGoldStores();
+        _updateGoldMarkers();
+        break;
+    }
   }
 
   void _onMapCreated(mb.MapboxMap controller) async {
@@ -205,8 +295,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // Wait for the map to fully render before adding markers
       await Future.delayed(const Duration(seconds: 1));
       
-      // Initialize annotation manager
-      await _initializeAnnotationManager();
+      // Initialize annotation managers
+      await _initializeAnnotationManagers();
       
       // Start preloading assets in background
       _preloadMarkerAssets().then((_) {
@@ -219,24 +309,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _initializeAnnotationManager() async {
+  Future<void> _initializeAnnotationManagers() async {
     try {
       if (mapboxMapController != null) {
-        print('Initializing annotation manager');
+        print('Initializing annotation managers');
         
-        // Create a PointAnnotationManager for store markers
-        final pointAnnotationOptions = await mapboxMapController!.annotations.createPointAnnotationManager();
+        // Create separate annotation managers for each category
+        final bronzeManager = await mapboxMapController!.annotations.createPointAnnotationManager();
+        final silverManager = await mapboxMapController!.annotations.createPointAnnotationManager();
+        final goldManager = await mapboxMapController!.annotations.createPointAnnotationManager();
+        
         setState(() {
-          pointAnnotationManager = pointAnnotationOptions;
+          bronzeAnnotationManager = bronzeManager;
+          silverAnnotationManager = silverManager;
+          goldAnnotationManager = goldManager;
         });
         
         // Save to the provider for later use
-        _mapProvider.pointAnnotationManager = pointAnnotationManager;
+        _mapProvider.bronzeAnnotationManager = bronzeManager;
+        _mapProvider.silverAnnotationManager = silverManager;
+        _mapProvider.goldAnnotationManager = goldManager;
         
-        print('Annotation manager initialized successfully');
+        print('Annotation managers initialized successfully');
       }
     } catch (e) {
-      print('Error initializing annotation manager: $e');
+      print('Error initializing annotation managers: $e');
+      ToastService.show('Error initializing map markers');
     }
   }
 
@@ -247,10 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _mapProvider.fetchStores();
       
       if (_mapProvider.stores.isNotEmpty) {
-        // Only create markers if they should be visible
-        if (!_hideMarkers && pointAnnotationManager != null) {
-          await _createStoreMarkers();
-        }
+        await _createCategoryMarkers();
         
         setState(() {
           _storesLoaded = true;
@@ -293,9 +388,59 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _createStoreMarkers() async {
-    if (pointAnnotationManager == null || mapboxMapController == null) return;
+  Future<void> _createCategoryMarkers() async {
+    try {
+      // Create markers for each category if they should be visible
+      if (_mapProvider.showBronzeStores) {
+        await _createBronzeMarkers();
+      }
+      
+      if (_mapProvider.showSilverStores) {
+        await _createSilverMarkers();
+      }
+      
+      if (_mapProvider.showGoldStores) {
+        await _createGoldMarkers();
+      }
+    } catch (e) {
+      print('Error creating category markers: $e');
+    }
+  }
+
+  Future<void> _createBronzeMarkers() async {
+    if (bronzeAnnotationManager == null || _mapProvider.bronzeStores.isEmpty) return;
     
+    try {
+      await _createMarkersForStores(_mapProvider.bronzeStores, bronzeAnnotationManager!);
+      print('Created ${_mapProvider.bronzeStores.length} bronze markers');
+    } catch (e) {
+      print('Error creating bronze markers: $e');
+    }
+  }
+
+  Future<void> _createSilverMarkers() async {
+    if (silverAnnotationManager == null || _mapProvider.silverStores.isEmpty) return;
+    
+    try {
+      await _createMarkersForStores(_mapProvider.silverStores, silverAnnotationManager!);
+      print('Created ${_mapProvider.silverStores.length} silver markers');
+    } catch (e) {
+      print('Error creating silver markers: $e');
+    }
+  }
+
+  Future<void> _createGoldMarkers() async {
+    if (goldAnnotationManager == null || _mapProvider.goldStores.isEmpty) return;
+    
+    try {
+      await _createMarkersForStores(_mapProvider.goldStores, goldAnnotationManager!);
+      print('Created ${_mapProvider.goldStores.length} gold markers');
+    } catch (e) {
+      print('Error creating gold markers: $e');
+    }
+  }
+
+  Future<void> _createMarkersForStores(List<Stores> stores, mb.PointAnnotationManager manager) async {
     try {
       // Wait for assets to be preloaded if possible
       if (!_assetsPreloaded) {
@@ -303,11 +448,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       
       // Limit the number of markers to avoid memory issues
-      final storesToDisplay = _mapProvider.stores.take(100).toList(); // Limit to first 100 for safety
-      print('Attempting to create markers for ${storesToDisplay.length} stores');
+      final storesToDisplay = stores.take(50).toList(); // Limit per category for better performance
       
       // Process markers in smaller batches to avoid overwhelming memory
-      const int batchSize = 20;
+      const int batchSize = 10;
       for (int i = 0; i < storesToDisplay.length; i += batchSize) {
         final int end = (i + batchSize < storesToDisplay.length) 
             ? i + batchSize 
@@ -356,10 +500,9 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         
         // Add the batch of markers to the map
-        if (markerBatch.isNotEmpty && pointAnnotationManager != null) {
+        if (markerBatch.isNotEmpty) {
           try {
-            await pointAnnotationManager?.createMulti(markerBatch);
-            print('Added batch of ${markerBatch.length} markers');
+            await manager.createMulti(markerBatch);
           } catch (e) {
             print('Error adding marker batch: $e');
           }
@@ -368,10 +511,50 @@ class _HomeScreenState extends State<HomeScreen> {
         // Small delay to allow UI to update and prevent ANR
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      
-      print('Finished creating store markers');
     } catch (e) {
-      print('Error in _createStoreMarkers: $e');
+      print('Error in _createMarkersForStores: $e');
+    }
+  }
+
+  void _updateBronzeMarkers() async {
+    try {
+      if (bronzeAnnotationManager != null) {
+        await bronzeAnnotationManager!.deleteAll();
+        
+        if (_mapProvider.showBronzeStores) {
+          await _createBronzeMarkers();
+        }
+      }
+    } catch (e) {
+      print('Error updating bronze markers: $e');
+    }
+  }
+
+  void _updateSilverMarkers() async {
+    try {
+      if (silverAnnotationManager != null) {
+        await silverAnnotationManager!.deleteAll();
+        
+        if (_mapProvider.showSilverStores) {
+          await _createSilverMarkers();
+        }
+      }
+    } catch (e) {
+      print('Error updating silver markers: $e');
+    }
+  }
+
+  void _updateGoldMarkers() async {
+    try {
+      if (goldAnnotationManager != null) {
+        await goldAnnotationManager!.deleteAll();
+        
+        if (_mapProvider.showGoldStores) {
+          await _createGoldMarkers();
+        }
+      }
+    } catch (e) {
+      print('Error updating gold markers: $e');
     }
   }
 
@@ -476,35 +659,5 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
-
-  // Toggle between showing and hiding markers
-  void _toggleMarkerDisplay() async {
-    try {
-      setState(() {
-        _hideMarkers = !_hideMarkers;
-      });
-      
-      if (_hideMarkers) {
-        ToastService.show('Hiding markers');
-        
-        if (pointAnnotationManager != null) {
-          try {
-            await pointAnnotationManager!.deleteAll();
-            print('Deleted all markers');
-          } catch (e) {
-            print('Error deleting markers: $e');
-          }
-        }
-      } else {
-        ToastService.show('Showing markers');
-        
-        if (pointAnnotationManager != null && _mapProvider.stores.isNotEmpty) {
-          await _createStoreMarkers();
-        }
-      }
-    } catch (e) {
-      print('Error in _toggleMarkerDisplay: $e');
-      ToastService.show('Error toggling markers');
-    }
-  }
 }
+

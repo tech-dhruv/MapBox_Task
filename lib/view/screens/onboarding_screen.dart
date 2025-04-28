@@ -152,8 +152,8 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
               right: 18,
               child: TextButton(
                 onPressed: () {
-                  // sl<SharedPreferences>().setBool(AppConstants.ONBOARDING_COMPLETED, true);
-                  // context.router.replace(const SignupRoute());
+                  sl<SharedPreferences>().setBool(AppConstants.ONBOARDING_DONE, true);
+                  context.router.replace(const HomeRoute());
                 },
                 child: const Text(
                   'Skip',

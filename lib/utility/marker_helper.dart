@@ -5,7 +5,7 @@ class MarkerHelper {
   /// Determines the appropriate marker asset path based on store data
   static String getMarkerAsset(Stores store) {
     // Step 1: Determine the tier (Gold, Silver, Bronze) based on percentile
-    String tier = _determineTier(store.percentile);
+    String tier = determineTier(store.percentile);
     
     // Step 2: Determine the color (Green, Yellow, Red, Gray) based on sales ratio
     String color = _determineColor(store.caseVolumeLtm, store.cirocCases);
@@ -44,7 +44,7 @@ class MarkerHelper {
   ///   Gold: Percentile < 10
   ///   Silver: Percentile between 10-50
   ///   Bronze: Percentile > 50 or no percentile data
-  static String _determineTier(double? percentile) {
+  static String determineTier(double? percentile) {
     if (percentile == null) {
       return 'bronze';
     }
