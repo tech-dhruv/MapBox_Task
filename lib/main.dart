@@ -8,6 +8,7 @@ import 'package:mapbox_task/config/app_constants.dart';
 import 'package:mapbox_task/providers/auth_provider.dart';
 import 'package:mapbox_task/providers/connectivity_provider.dart';
 import 'package:mapbox_task/providers/map_provider.dart';
+import 'package:mapbox_task/providers/search_provider.dart';
 import 'package:mapbox_task/providers/theme_provider.dart';
 import 'package:mapbox_task/providers/user_provider.dart';
 import 'package:mapbox_task/view/screens/home/home_screen.dart';
@@ -65,6 +66,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => di.sl<ThemeProvider>()),
         ChangeNotifierProvider(create: (_) => di.sl<UserProvider>()),
         ChangeNotifierProvider(create: (_) => di.sl<MapProvider>()),
+        ChangeNotifierProvider(create: (_) => di.sl<SearchProvider>()),
         ChangeNotifierProvider(
             create: (_) => di.sl<ConnectivityProvider>(),
             child: const HomeScreen()),

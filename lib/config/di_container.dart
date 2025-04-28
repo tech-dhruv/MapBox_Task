@@ -5,6 +5,7 @@ import 'package:mapbox_task/config/api_constants.dart';
 import 'package:mapbox_task/data/datasource/remote/dio/logging_interceptor.dart';
 import 'package:mapbox_task/providers/connectivity_provider.dart';
 import 'package:mapbox_task/providers/map_provider.dart';
+import 'package:mapbox_task/providers/search_provider.dart';
 import 'package:mapbox_task/providers/user_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -34,6 +35,7 @@ Future<void> init() async {
   sl.registerFactory(() => UserProvider(sl()));
   sl.registerFactory(() => ConnectivityProvider());
   sl.registerFactory(() => MapProvider());
+  sl.registerFactory(() => SearchProvider());
 
   // External
   final sharedPreferences = await SharedPreferences.getInstance();

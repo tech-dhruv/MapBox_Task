@@ -13,11 +13,12 @@ import 'package:mapbox_task/models/customer_model.dart';
 import 'package:mapbox_task/models/stores_model.dart';
 import 'package:mapbox_task/providers/connectivity_provider.dart';
 import 'package:mapbox_task/providers/map_provider.dart';
+import 'package:mapbox_task/providers/search_provider.dart';
 import 'package:mapbox_task/utility/marker_helper.dart';
 import 'package:mapbox_task/utility/toast_service.dart';
 import 'package:mapbox_task/view/base/theme_button.dart';
-import 'package:mapbox_task/view/base/theme_input_field.dart';
 import 'package:mapbox_task/view/screens/home/filter_bottom_sheet.dart';
+import 'package:mapbox_task/view/screens/home/search_screen.dart';
 import 'package:mapbox_task/view/screens/no_internet/no_internet.dart';
 import 'package:provider/provider.dart';
 
@@ -33,19 +34,20 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isInit = true;
   late ConnectivityProvider _connectivityProvider;
   late MapProvider _mapProvider;
-
+  late SearchProvider _searchProvider;
+  
   mb.MapboxMap? mapboxMapController;
   mb.PointAnnotationManager? bronzeAnnotationManager;
   mb.PointAnnotationManager? silverAnnotationManager;
   mb.PointAnnotationManager? goldAnnotationManager;
   mb.PointAnnotationManager? customerAnnotationManager;
+  mb.PointAnnotationManager? searchResultAnnotationManager;
   
   StreamSubscription? userPositionStream;
   gl.Position? _currentPosition;
   bool _storesLoaded = false;
   bool _customersLoaded = false;
   
-  // Cache for marker images to avoid reloading same assets
   final Map<String, Uint8List> _markerImageCache = {};
   bool _assetsPreloaded = false;
 
@@ -57,20 +59,20 @@ class _HomeScreenState extends State<HomeScreen> {
       _setupPositionTracking();
       _connectivityProvider = Provider.of<ConnectivityProvider>(context);
       _mapProvider = Provider.of<MapProvider>(context);
+      _searchProvider = Provider.of<SearchProvider>(context);
       _connectivityProvider.initConnectivity(mounted);
       _connectivityProvider.connectivitySubscription = _connectivityProvider
           .connectivity.onConnectivityChanged
           .listen(_connectivityProvider.updateConnectionStatus);
       
-      // Preload marker assets in the background
       _preloadMarkerAssets();
+      _listenForSearchSelection();
     }
   }
 
   @override
   void initState() {
     super.initState();
-    // Add a post-frame callback to rotate the map once it's loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _rotateMapToShowCompass();
     });
@@ -81,6 +83,78 @@ class _HomeScreenState extends State<HomeScreen> {
     userPositionStream?.cancel();
     _markerImageCache.clear();
     super.dispose();
+  }
+  
+  void _listenForSearchSelection() {
+    _searchProvider.addListener(() {
+      final selectedPlace = _searchProvider.selectedPlace;
+      if (selectedPlace != null) {
+        if (mapboxMapController != null) {
+          Future.delayed(Duration.zero, () {
+            _navigateToSelectedPlace(selectedPlace);
+          });
+        }
+      }
+    });
+  }
+  
+  void _navigateToSelectedPlace(place) {
+    if (mapboxMapController != null) {
+      mapboxMapController!.flyTo(
+        _searchProvider.getCameraOptionsForPlace(place),
+        mb.MapAnimationOptions(duration: 1000),
+      );
+      
+      _addSelectedPlaceMarker(place);
+    }
+  }
+  
+  Future<void> _addSelectedPlaceMarker(place) async {
+    try {
+      if (mapboxMapController == null) return;
+      
+      if (searchResultAnnotationManager != null) {
+        try {
+          await searchResultAnnotationManager!.deleteAll();
+        } catch (e) {
+          searchResultAnnotationManager = null;
+        }
+      }
+      
+      if (searchResultAnnotationManager == null) {
+        try {
+          searchResultAnnotationManager = await mapboxMapController!.annotations.createPointAnnotationManager();
+        } catch (e) {
+          return;
+        }
+      }
+      
+      Uint8List? markerImageBytes = _markerImageCache[Assets.BLUE_CUSTOMER_PIN];
+      if (markerImageBytes == null) {
+        try {
+          final ByteData data = await rootBundle.load(Assets.BLUE_CUSTOMER_PIN);
+          markerImageBytes = data.buffer.asUint8List();
+          _markerImageCache[Assets.BLUE_CUSTOMER_PIN] = markerImageBytes;
+        } catch (e) {
+          return;
+        }
+      }
+      
+      final markerOptions = mb.PointAnnotationOptions(
+        geometry: mb.Point(
+          coordinates: mb.Position(
+            place.longitude,
+            place.latitude,
+          ),
+        ),
+        image: markerImageBytes,
+        iconSize: 0.2,
+      );
+      
+      try {
+        await searchResultAnnotationManager!.create(markerOptions);
+      } catch (e) {}
+    } catch (e) {}
   }
 
   @override
@@ -106,67 +180,136 @@ class _HomeScreenState extends State<HomeScreen> {
                         top: 15,
                         left: 10,
                         right: 10,
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ThemeInputField(
-                                  cursorColor: ColorPallet.whiteColor.withOpacity(0.6),
-                                  textStyle: TextStyles.bodyText2(color: ColorPallet.whiteColor.withOpacity(0.8)),
-                                  height: 50,
-                                  hint: 'Search for a place',
-                                  hintStyle: TextStyles.bodyText2(color: ColorPallet.whiteColor.withOpacity(0.6)),
-                                  backgroundColor: ColorPallet.secondaryDarkBlackColor,
-                                  showBorder: true,
-                                  borderColor: ColorPallet.whiteColor,
-                                )
-                              ),
-                              const SizedBox(width: 10),
-                              Consumer<MapProvider>(
-                                builder: (context, mapProvider, _) {
-                                  // Count active filters
-                                  int activeFilters = 0;
-                                  if (mapProvider.showBronzeStores) activeFilters++;
-                                  if (mapProvider.showSilverStores) activeFilters++;
-                                  if (mapProvider.showGoldStores) activeFilters++;
-                                  if (mapProvider.showCustomers) activeFilters++;
-                                  
-                                  return Stack(
-                                    children: [
-                                      CCIconButton(
-                                        buttonHeight: 50,
-                                        buttonWidth: 50,
-                                        shadow: false,
-                                        onTap: () {
-                                          _showFilterBottomSheet(context);
-                                        },
-                                        icon: Icon(Icons.filter_alt_outlined, color: ColorPallet.whiteColor),
-                                      ),
-                                      if (activeFilters > 0 && activeFilters < 4)
-                                        Positioned(
-                                          right: 5,
-                                          top: 5,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(6),
-                                            decoration: BoxDecoration(
-                                              color: ColorPallet.secondaryColor,
-                                              border: Border.all(color: ColorPallet.whiteColor),
-                                              shape: BoxShape.circle,
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => Container(
+                                            height: MediaQuery.of(context).size.height * 0.9,
+                                            decoration: const BoxDecoration(
+                                              color: ColorPallet.darkBlackColor,
+                                              borderRadius: BorderRadius.only(
+                                                topLeft: Radius.circular(20),
+                                                topRight: Radius.circular(20),
+                                              ),
                                             ),
-                                            child: Text(
-                                              '$activeFilters',
-                                              style: TextStyles.bodyText3(color: ColorPallet.whiteColor),
-                                            ),
+                                            child: const SearchScreen(),
                                           ),
+                                        );
+                                      },
+                                      child: Container(
+                                        height: 50,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        decoration: BoxDecoration(
+                                          color: ColorPallet.secondaryDarkBlackColor,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: ColorPallet.whiteColor),
                                         ),
-                                    ],
-                                  );
-                                },
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.search,
+                                              color: ColorPallet.whiteColor,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Consumer<SearchProvider>(
+                                                builder: (context, searchProvider, _) {
+                                                  final selectedPlace = searchProvider.selectedPlace;
+                                                  return Text(
+                                                    selectedPlace != null
+                                                        ? selectedPlace.name
+                                                        : 'Search for a place',
+                                                    style: TextStyles.bodyText2(
+                                                      color: selectedPlace != null
+                                                          ? ColorPallet.whiteColor.withOpacity(0.8)
+                                                          : ColorPallet.whiteColor.withOpacity(0.6),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            Consumer<SearchProvider>(
+                                              builder: (context, searchProvider, _) {
+                                                if (searchProvider.selectedPlace != null) {
+                                                  return IconButton(
+                                                    icon: const Icon(
+                                                      Icons.clear,
+                                                      color: ColorPallet.whiteColor,
+                                                      size: 20,
+                                                    ),
+                                                    onPressed: () {
+                                                      searchProvider.clearSelectedPlace();
+                                                      searchProvider.clearSearch();
+                                                    },
+                                                  );
+                                                }
+                                                return const SizedBox.shrink();
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Consumer<MapProvider>(
+                                    builder: (context, mapProvider, _) {
+                                      int activeFilters = 0;
+                                      if (mapProvider.showBronzeStores) activeFilters++;
+                                      if (mapProvider.showSilverStores) activeFilters++;
+                                      if (mapProvider.showGoldStores) activeFilters++;
+                                      if (mapProvider.showCustomers) activeFilters++;
+                                      
+                                      return Stack(
+                                        children: [
+                                          CCIconButton(
+                                            buttonHeight: 50,
+                                            buttonWidth: 50,
+                                            shadow: false,
+                                            onTap: () {
+                                              _showFilterBottomSheet(context);
+                                            },
+                                            icon: Icon(Icons.filter_alt_outlined, color: ColorPallet.whiteColor),
+                                          ),
+                                          if (activeFilters > 0 && activeFilters < 4)
+                                            Positioned(
+                                              right: 5,
+                                              top: 5,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: ColorPallet.secondaryColor,
+                                                  border: Border.all(color: ColorPallet.whiteColor),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Text(
+                                                  '$activeFilters',
+                                                  style: TextStyles.bodyText3(color: ColorPallet.whiteColor),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -194,9 +337,6 @@ class _HomeScreenState extends State<HomeScreen> {
         mapboxMapController = controller;
       });
       
-      print('Map created successfully');
-      
-      // Configure basic map settings
       await mapboxMapController?.location.updateSettings(
         mb.LocationComponentSettings(
           enabled: true,
@@ -204,7 +344,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
       
-      // Configure compass settings
       await mapboxMapController?.compass.updateSettings(
         mb.CompassSettings(
           enabled: true,
@@ -216,7 +355,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
       
-      // Configure scale bar settings
       await mapboxMapController?.scaleBar.updateSettings(
         mb.ScaleBarSettings(
           enabled: true,
@@ -226,20 +364,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
       
-      // Wait for the map to fully render before adding markers
       await Future.delayed(const Duration(seconds: 1));
       
-      // Initialize annotation managers
       await _initializeAnnotationManagers();
       
-      // Start preloading assets in background
       _preloadMarkerAssets().then((_) {
-        // Load stores and create markers once assets are preloaded
         _loadStoresAndCreateMarkers();
         _loadCustomersAndCreateMarkers();
       });
     } catch (e) {
-      print('Error in _onMapCreated: $e');
       ToastService.show('Error initializing map');
     }
   }
@@ -249,7 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mapboxMapController != null) {
         print('Initializing annotation managers');
         
-        // Create separate annotation managers for each category
+        
         final bronzeManager = await mapboxMapController!.annotations.createPointAnnotationManager();
         final silverManager = await mapboxMapController!.annotations.createPointAnnotationManager();
         final goldManager = await mapboxMapController!.annotations.createPointAnnotationManager();
@@ -262,13 +395,10 @@ class _HomeScreenState extends State<HomeScreen> {
           customerAnnotationManager = customerManager;
         });
         
-        // Save to the provider for later use
         _mapProvider.bronzeAnnotationManager = bronzeManager;
         _mapProvider.silverAnnotationManager = silverManager;
         _mapProvider.goldAnnotationManager = goldManager;
         _mapProvider.customerAnnotationManager = customerManager;
-        
-        print('Annotation managers initialized successfully');
       }
     } catch (e) {
       print('Error initializing annotation managers: $e');
@@ -309,7 +439,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      print('Error in _loadCustomersAndCreateMarkers: $e');
       ToastService.show('Failed to load customer markers');
     }
   }
@@ -328,7 +457,6 @@ class _HomeScreenState extends State<HomeScreen> {
         Assets.BLUE_CUSTOMER_PIN,
       ];
       
-      // Load each asset into the cache
       for (final asset in markerAssets) {
         try {
           final ByteData data = await rootBundle.load(asset);
@@ -348,7 +476,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _createCategoryMarkers() async {
     try {
-      // Create markers for each category if they should be visible
       if (_mapProvider.showBronzeStores) {
         await _createBronzeMarkers();
       }
@@ -411,15 +538,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _createMarkersForStores(List<Stores> stores, mb.PointAnnotationManager manager) async {
     try {
-      // Wait for assets to be preloaded if possible
       if (!_assetsPreloaded) {
         await _preloadMarkerAssets();
       }
       
-      // Limit the number of markers to avoid memory issues
-      final storesToDisplay = stores.take(50).toList(); // Limit per category for better performance
+      final storesToDisplay = stores.take(50).toList();
       
-      // Process markers in smaller batches to avoid overwhelming memory
       const int batchSize = 10;
       for (int i = 0; i < storesToDisplay.length; i += batchSize) {
         final int end = (i + batchSize < storesToDisplay.length) 
@@ -428,7 +552,6 @@ class _HomeScreenState extends State<HomeScreen> {
             
         final List<mb.PointAnnotationOptions> markerBatch = [];
         
-        // Process the current batch
         for (int j = i; j < end; j++) {
           final store = storesToDisplay[j];
           
@@ -439,10 +562,8 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           
           try {
-            // Get the appropriate marker image based on store data
             final markerAsset = MarkerHelper.getMarkerAsset(store);
             
-            // Use cached image if available, otherwise load it
             Uint8List? markerImageBytes = _markerImageCache[markerAsset];
             if (markerImageBytes == null) {
               final ByteData bytes = await rootBundle.load(markerAsset);
@@ -450,7 +571,6 @@ class _HomeScreenState extends State<HomeScreen> {
               _markerImageCache[markerAsset] = markerImageBytes;
             }
             
-            // Create point annotation options with minimal properties
             final markerOption = mb.PointAnnotationOptions(
               geometry: mb.Point(
                 coordinates: mb.Position(
@@ -459,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               image: markerImageBytes,
-              iconSize: 0.15, // Keep size small to reduce memory usage
+              iconSize: 0.15,
             );
             
             markerBatch.add(markerOption);
@@ -468,7 +588,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         
-        // Add the batch of markers to the map
         if (markerBatch.isNotEmpty) {
           try {
             await manager.createMulti(markerBatch);
@@ -477,7 +596,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         
-        // Small delay to allow UI to update and prevent ANR
         await Future.delayed(const Duration(milliseconds: 100));
       }
     } catch (e) {
@@ -487,12 +605,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _createMarkersForCustomers(List<Customer> customers, mb.PointAnnotationManager manager) async {
     try {
-      // Wait for assets to be preloaded if possible
       if (!_assetsPreloaded) {
         await _preloadMarkerAssets();
       }
       
-      // Process markers in smaller batches to avoid overwhelming memory
       const int batchSize = 10;
       for (int i = 0; i < customers.length; i += batchSize) {
         final int end = (i + batchSize < customers.length) 
@@ -501,7 +617,6 @@ class _HomeScreenState extends State<HomeScreen> {
             
         final List<mb.PointAnnotationOptions> markerBatch = [];
         
-        // Process the current batch
         for (int j = i; j < end; j++) {
           final customer = customers[j];
           
@@ -512,10 +627,8 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           
           try {
-            // Use the blue customer pin for all customers
             final markerAsset = Assets.BLUE_CUSTOMER_PIN;
             
-            // Use cached image if available, otherwise load it
             Uint8List? markerImageBytes = _markerImageCache[markerAsset];
             if (markerImageBytes == null) {
               final ByteData bytes = await rootBundle.load(markerAsset);
@@ -523,7 +636,6 @@ class _HomeScreenState extends State<HomeScreen> {
               _markerImageCache[markerAsset] = markerImageBytes;
             }
             
-            // Create point annotation options with minimal properties
             final markerOption = mb.PointAnnotationOptions(
               geometry: mb.Point(
                 coordinates: mb.Position(
@@ -532,7 +644,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               image: markerImageBytes,
-              iconSize: 0.15, // Keep size small to reduce memory usage
+              iconSize: 0.15,
             );
             
             markerBatch.add(markerOption);
@@ -541,7 +653,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         
-        // Add the batch of markers to the map
         if (markerBatch.isNotEmpty) {
           try {
             await manager.createMulti(markerBatch);
@@ -550,7 +661,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         
-        // Small delay to allow UI to update and prevent ANR
         await Future.delayed(const Duration(milliseconds: 100));
       }
     } catch (e) {
@@ -646,7 +756,6 @@ class _HomeScreenState extends State<HomeScreen> {
         gl.Geolocator.getPositionStream(locationSettings: locationSettings)
             .listen((gl.Position? position) {
       if (position != null && mapboxMapController != null) {
-        print('Current Position===> $position');
         _currentPosition = position;
         mapboxMapController?.setCamera(
           mb.CameraOptions(
@@ -704,7 +813,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _rotateMapToShowCompass() {
-    // Delay to ensure map is properly initialized
     Future.delayed(const Duration(seconds: 1), () {
       if (mapboxMapController != null) {
         mapboxMapController?.setCamera(

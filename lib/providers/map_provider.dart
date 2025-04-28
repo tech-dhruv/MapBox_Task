@@ -11,20 +11,17 @@ class MapProvider extends ChangeNotifier {
   List<Stores> silverStores = [];
   List<Stores> goldStores = [];
   
-  // Customer data
   List<Customer> customers = [];
   
   bool isLoading = false;
   String? error;
   
-  // Save annotation managers for later use
   mb.PointAnnotationManager? pointAnnotationManager;
   mb.PointAnnotationManager? bronzeAnnotationManager;
   mb.PointAnnotationManager? silverAnnotationManager;
   mb.PointAnnotationManager? goldAnnotationManager;
   mb.PointAnnotationManager? customerAnnotationManager;
 
-  // Track visibility of each category
   bool showBronzeStores = true;
   bool showSilverStores = true;
   bool showGoldStores = true;
@@ -35,17 +32,13 @@ class MapProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
       
-      // Load the JSON file from assets
       final String response = await rootBundle.loadString('lib/raw_data/anonymized_stores.json');
       
-      // Parse the JSON string
       final storeModel = storeModelFromJson(response);
       
-      // Update the stores list
       if (storeModel.stores != null) {
         stores = storeModel.stores!.take(100).toList();
         _categorizeStoresByTier();
-        print('All stores loaded: ${stores.length} (memory only, not displayed yet)');
       }
 
       isLoading = false;
@@ -54,7 +47,6 @@ class MapProvider extends ChangeNotifier {
       isLoading = false;
       error = e.toString();
       notifyListeners();
-      print('Error loading stores: $e');
     }
   }
   
@@ -63,22 +55,12 @@ class MapProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
       
-      // Load the JSON file from assets
-      print('Attempting to load customer data file...');
       final String response = await rootBundle.loadString('lib/raw_data/anonymized_customers.json');
-      print('Customer data file loaded, length: ${response.length} characters');
       
-      // Parse the JSON string
-      print('Parsing customer JSON data...');
       final customerModel = customerModelFromJson(response);
       
-      // Update the customers list - take only 50 as requested
       if (customerModel.customers != null) {
-        print('Found ${customerModel.customers!.length} customers in the data');
         customers = customerModel.customers!.take(50).toList();
-        print('Customers loaded: ${customers.length} (memory only, not displayed yet)');
-      } else {
-        print('No customers found in the data - customers list is null');
       }
 
       isLoading = false;
@@ -87,18 +69,14 @@ class MapProvider extends ChangeNotifier {
       isLoading = false;
       error = e.toString();
       notifyListeners();
-      print('Error loading customers: $e');
-      print('Stack trace: ${StackTrace.current}');
     }
   }
   
   void _categorizeStoresByTier() {
-    // Clear existing lists
     bronzeStores.clear();
     silverStores.clear();
     goldStores.clear();
     
-    // Categorize each store based on its tier
     for (var store in stores) {
       String tier = _determineTier(store.percentile);
       switch (tier) {
@@ -114,8 +92,6 @@ class MapProvider extends ChangeNotifier {
           break;
       }
     }
-    
-    print('Stores categorized - Bronze: ${bronzeStores.length}, Silver: ${silverStores.length}, Gold: ${goldStores.length}');
   }
   
   String _determineTier(double? percentile) {
