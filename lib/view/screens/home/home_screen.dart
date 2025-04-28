@@ -16,6 +16,7 @@ import 'package:mapbox_task/utility/marker_helper.dart';
 import 'package:mapbox_task/utility/toast_service.dart';
 import 'package:mapbox_task/view/base/theme_button.dart';
 import 'package:mapbox_task/view/base/theme_input_field.dart';
+import 'package:mapbox_task/view/screens/home/filter_bottom_sheet.dart';
 import 'package:mapbox_task/view/screens/no_internet/no_internet.dart';
 import 'package:provider/provider.dart';
 
@@ -120,67 +121,47 @@ class _HomeScreenState extends State<HomeScreen> {
                                 )
                               ),
                               const SizedBox(width: 10),
-                              CCIconButton(
-                                buttonHeight: 50,
-                                buttonWidth: 50,
-                                shadow: false,
-                                onTap: () {},
-                                icon: Icon(Icons.filter_alt_outlined,color: ColorPallet.whiteColor,),
+                              Consumer<MapProvider>(
+                                builder: (context, mapProvider, _) {
+                                  // Count active filters
+                                  int activeFilters = 0;
+                                  if (mapProvider.showBronzeStores) activeFilters++;
+                                  if (mapProvider.showSilverStores) activeFilters++;
+                                  if (mapProvider.showGoldStores) activeFilters++;
+                                  
+                                  return Stack(
+                                    children: [
+                                      CCIconButton(
+                                        buttonHeight: 50,
+                                        buttonWidth: 50,
+                                        shadow: false,
+                                        onTap: () {
+                                          _showFilterBottomSheet(context);
+                                        },
+                                        icon: Icon(Icons.filter_alt_outlined, color: ColorPallet.whiteColor),
+                                      ),
+                                      if (activeFilters > 0 && activeFilters < 3)
+                                        Positioned(
+                                          right: 5,
+                                          top: 5,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: ColorPallet.secondaryColor,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Text(
+                                              '$activeFilters',
+                                              style: TextStyles.bodyText3(color: ColorPallet.whiteColor),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                      // Store category selection buttons
-                      Positioned(
-                        bottom: 20,
-                        left: 10,
-                        right: 10,
-                        child: Consumer<MapProvider>(
-                          builder: (context, mapProvider, _) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                              decoration: BoxDecoration(
-                                color: ColorPallet.secondaryDarkBlackColor.withOpacity(0.85),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Store Categories',
-                                    style: TextStyles.bodyText1(color: ColorPallet.whiteColor),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      _buildCategoryToggle(
-                                        'Bronze', 
-                                        Assets.BRONZE_GRAY, 
-                                        mapProvider.showBronzeStores,
-                                        () => _toggleCategory('bronze'),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      _buildCategoryToggle(
-                                        'Silver', 
-                                        Assets.SILVER_GRAY, 
-                                        mapProvider.showSilverStores,
-                                        () => _toggleCategory('silver'),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      _buildCategoryToggle(
-                                        'Gold', 
-                                        Assets.GOLD_GRAY, 
-                                        mapProvider.showGoldStores,
-                                        () => _toggleCategory('gold'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
                         ),
                       ),
                     ],
@@ -200,58 +181,6 @@ class _HomeScreenState extends State<HomeScreen> {
             : const NoInternetScreen();
       },
     );
-  }
-
-  Widget _buildCategoryToggle(String label, String iconAsset, bool isActive, VoidCallback onTap) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? ColorPallet.secondaryColor.withOpacity(0.3) : Colors.transparent,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(
-              color: isActive ? ColorPallet.secondaryColor : ColorPallet.whiteColor.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              Image.asset(
-                iconAsset,
-                height: 30,
-                width: 30,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: TextStyles.bodyText3(
-                  color: isActive ? ColorPallet.whiteColor : ColorPallet.whiteColor.withOpacity(0.5),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _toggleCategory(String category) {
-    switch (category) {
-      case 'bronze':
-        _mapProvider.toggleBronzeStores();
-        _updateBronzeMarkers();
-        break;
-      case 'silver':
-        _mapProvider.toggleSilverStores();
-        _updateSilverMarkers();
-        break;
-      case 'gold':
-        _mapProvider.toggleGoldStores();
-        _updateGoldMarkers();
-        break;
-    }
   }
 
   void _onMapCreated(mb.MapboxMap controller) async {
@@ -658,6 +587,31 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     });
+  }
+
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => FilterBottomSheet(
+        onCategoryToggled: _updateCategoryMarkers,
+      ),
+    );
+  }
+
+  void _updateCategoryMarkers(String category) {
+    switch (category) {
+      case 'bronze':
+        _updateBronzeMarkers();
+        break;
+      case 'silver':
+        _updateSilverMarkers();
+        break;
+      case 'gold':
+        _updateGoldMarkers();
+        break;
+    }
   }
 }
 
