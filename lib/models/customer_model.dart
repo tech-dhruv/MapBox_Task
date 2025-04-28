@@ -9,57 +9,57 @@ CustomerModel customerModelFromJson(String str) => CustomerModel.fromJson(json.d
 String customerModelToJson(CustomerModel data) => json.encode(data.toJson());
 
 class CustomerModel {
-    List<Store>? stores;
+    List<Customer>? customers;
 
     CustomerModel({
-        this.stores,
+        this.customers,
     });
 
     factory CustomerModel.fromJson(Map<String, dynamic> json) => CustomerModel(
-        stores: json["stores"] == null ? [] : List<Store>.from(json["stores"]!.map((x) => Store.fromJson(x))),
+        customers: json["customers"] == null ? [] : List<Customer>.from(json["customers"]!.map((x) => Customer.fromJson(x))),
     );
 
     Map<String, dynamic> toJson() => {
-        "stores": stores == null ? [] : List<dynamic>.from(stores!.map((x) => x.toJson())),
+        "customers": customers == null ? [] : List<dynamic>.from(customers!.map((x) => x.toJson())),
     };
 }
 
-class Store {
-    String? id;
+class Customer {
+    String? customerId;
+    String? name;
+    String? email;
+    String? phone;
+    String? address;
     String? typename;
-    int? caseVolumeLtm;
-    dynamic caseVolume2024;
-    double? cirocCases;
-    double? percentile;
     GeoLocation? geoLocation;
 
-    Store({
-        this.id,
+    Customer({
+        this.customerId,
+        this.name,
+        this.email,
+        this.phone,
+        this.address,
         this.typename,
-        this.caseVolumeLtm,
-        this.caseVolume2024,
-        this.cirocCases,
-        this.percentile,
         this.geoLocation,
     });
 
-    factory Store.fromJson(Map<String, dynamic> json) => Store(
-        id: json["id"],
+    factory Customer.fromJson(Map<String, dynamic> json) => Customer(
+        customerId: json["customerId"],
+        name: json["name"],
+        email: json["email"],
+        phone: json["phone"],
+        address: json["address"],
         typename: json["__typename"],
-        caseVolumeLtm: json["caseVolumeLTM"],
-        caseVolume2024: json["caseVolume2024"],
-        cirocCases: json["cirocCases"]?.toDouble(),
-        percentile: json["percentile"]?.toDouble(),
         geoLocation: json["geoLocation"] == null ? null : GeoLocation.fromJson(json["geoLocation"]),
     );
 
     Map<String, dynamic> toJson() => {
-        "id": id,
+        "customerId": customerId,
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "address": address,
         "__typename": typename,
-        "caseVolumeLTM": caseVolumeLtm,
-        "caseVolume2024": caseVolume2024,
-        "cirocCases": cirocCases,
-        "percentile": percentile,
         "geoLocation": geoLocation?.toJson(),
     };
 }

@@ -28,7 +28,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     return Consumer<MapProvider>(
       builder: (context, mapProvider, _) {
         return Container(
-          padding: const EdgeInsets.only(left: 15,right: 15,top: 8,bottom: 15),
+          padding:
+              const EdgeInsets.only(left: 15, right: 15, top: 8, bottom: 15),
           decoration: BoxDecoration(
             color: ColorPallet.secondaryDarkBlackColor,
             borderRadius: const BorderRadius.only(
@@ -80,21 +81,21 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 children: [
                   _buildCategoryToggle(
                     'Bronze',
-                    Assets.BRONZE_GRAY,
+                    Assets.BRONZE,
                     mapProvider.showBronzeStores,
                     () => _toggleCategory(mapProvider, 'bronze'),
                   ),
                   const SizedBox(width: 10),
                   _buildCategoryToggle(
                     'Silver',
-                    Assets.SILVER_GRAY,
+                    Assets.SILVER,
                     mapProvider.showSilverStores,
                     () => _toggleCategory(mapProvider, 'silver'),
                   ),
                   const SizedBox(width: 10),
                   _buildCategoryToggle(
                     'Gold',
-                    Assets.GOLD_GRAY,
+                    Assets.GOLD,
                     mapProvider.showGoldStores,
                     () => _toggleCategory(mapProvider, 'gold'),
                   ),
@@ -110,6 +111,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   color: ColorPallet.whiteColor,
                 ),
               ),
+              const SizedBox(height: 10),
+              _buildCustomerToggle(mapProvider),
               const SizedBox(height: 20),
               ThemeButton(
                 onTap: () {
@@ -155,7 +158,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               const SizedBox(height: 5),
               Text(
                 label,
-                style: TextStyles.bodyText3(
+                style: TextStyle(
+                  fontSize: Dimensions.FONT_SIZE_13,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  fontFamily: AppConstants.FONT_FAMILY,
                   color: isActive
                       ? ColorPallet.whiteColor
                       : ColorPallet.whiteColor.withOpacity(0.5),
@@ -164,6 +170,45 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCustomerToggle(MapProvider mapProvider) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: ColorPallet.whiteColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Image.asset(
+            Assets.BLUE_CUSTOMER_PIN,
+            height: 30,
+            width: 30,
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(
+              'Show Customers',
+              style: TextStyles.bodyText2(
+                color: ColorPallet.whiteColor,
+              ),
+            ),
+          ),
+          Switch(
+            value: mapProvider.showCustomers,
+            onChanged: (value) {
+              _toggleCustomers(mapProvider);
+            },
+            activeColor: ColorPallet.secondaryColor,
+          ),
+        ],
       ),
     );
   }
@@ -186,6 +231,17 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     // Call the callback if provided
     if (widget.onCategoryToggled != null) {
       widget.onCategoryToggled!(category);
+    }
+  }
+
+  void _toggleCustomers(MapProvider mapProvider) {
+    setState(() {
+      mapProvider.toggleCustomers();
+    });
+
+    // Call the callback if provided
+    if (widget.onCategoryToggled != null) {
+      widget.onCategoryToggled!('customers');
     }
   }
 }

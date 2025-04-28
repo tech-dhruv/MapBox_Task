@@ -9,6 +9,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:mapbox_task/config/assets.dart';
 import 'package:mapbox_task/config/color.dart';
 import 'package:mapbox_task/config/text_style.dart';
+import 'package:mapbox_task/models/customer_model.dart';
 import 'package:mapbox_task/models/stores_model.dart';
 import 'package:mapbox_task/providers/connectivity_provider.dart';
 import 'package:mapbox_task/providers/map_provider.dart';
@@ -37,10 +38,12 @@ class _HomeScreenState extends State<HomeScreen> {
   mb.PointAnnotationManager? bronzeAnnotationManager;
   mb.PointAnnotationManager? silverAnnotationManager;
   mb.PointAnnotationManager? goldAnnotationManager;
+  mb.PointAnnotationManager? customerAnnotationManager;
   
   StreamSubscription? userPositionStream;
   gl.Position? _currentPosition;
   bool _storesLoaded = false;
+  bool _customersLoaded = false;
   
   // Cache for marker images to avoid reloading same assets
   final Map<String, Uint8List> _markerImageCache = {};
@@ -128,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   if (mapProvider.showBronzeStores) activeFilters++;
                                   if (mapProvider.showSilverStores) activeFilters++;
                                   if (mapProvider.showGoldStores) activeFilters++;
+                                  if (mapProvider.showCustomers) activeFilters++;
                                   
                                   return Stack(
                                     children: [
@@ -140,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         },
                                         icon: Icon(Icons.filter_alt_outlined, color: ColorPallet.whiteColor),
                                       ),
-                                      if (activeFilters > 0 && activeFilters < 3)
+                                      if (activeFilters > 0 && activeFilters < 4)
                                         Positioned(
                                           right: 5,
                                           top: 5,
@@ -148,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             padding: const EdgeInsets.all(6),
                                             decoration: BoxDecoration(
                                               color: ColorPallet.secondaryColor,
+                                              border: Border.all(color: ColorPallet.whiteColor),
                                               shape: BoxShape.circle,
                                             ),
                                             child: Text(
@@ -231,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _preloadMarkerAssets().then((_) {
         // Load stores and create markers once assets are preloaded
         _loadStoresAndCreateMarkers();
+        _loadCustomersAndCreateMarkers();
       });
     } catch (e) {
       print('Error in _onMapCreated: $e');
@@ -247,17 +253,20 @@ class _HomeScreenState extends State<HomeScreen> {
         final bronzeManager = await mapboxMapController!.annotations.createPointAnnotationManager();
         final silverManager = await mapboxMapController!.annotations.createPointAnnotationManager();
         final goldManager = await mapboxMapController!.annotations.createPointAnnotationManager();
+        final customerManager = await mapboxMapController!.annotations.createPointAnnotationManager();
         
         setState(() {
           bronzeAnnotationManager = bronzeManager;
           silverAnnotationManager = silverManager;
           goldAnnotationManager = goldManager;
+          customerAnnotationManager = customerManager;
         });
         
         // Save to the provider for later use
         _mapProvider.bronzeAnnotationManager = bronzeManager;
         _mapProvider.silverAnnotationManager = silverManager;
         _mapProvider.goldAnnotationManager = goldManager;
+        _mapProvider.customerAnnotationManager = customerManager;
         
         print('Annotation managers initialized successfully');
       }
@@ -286,6 +295,25 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadCustomersAndCreateMarkers() async {
+    if (_customersLoaded) return;
+    
+    try {
+      await _mapProvider.fetchCustomers();
+      
+      if (_mapProvider.customers.isNotEmpty) {
+        await _createCustomerMarkers();
+        
+        setState(() {
+          _customersLoaded = true;
+        });
+      }
+    } catch (e) {
+      print('Error in _loadCustomersAndCreateMarkers: $e');
+      ToastService.show('Failed to load customer markers');
+    }
+  }
+
   Future<void> _preloadMarkerAssets() async {
     if (_assetsPreloaded) return;
     
@@ -297,6 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Assets.BRONZE_GRAY, Assets.BRONZE_GREEN, Assets.BRONZE_RED, Assets.BRONZE_YELLOW,
         Assets.SILVER_GRAY, Assets.SILVER_GREEN, Assets.SILVER_RED, Assets.SILVER_YELLOW,
         Assets.GOLD_GRAY, Assets.GOLD_GREEN, Assets.GOLD_RED, Assets.GOLD_YELLOW,
+        Assets.BLUE_CUSTOMER_PIN,
       ];
       
       // Load each asset into the cache
@@ -333,6 +362,17 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       print('Error creating category markers: $e');
+    }
+  }
+
+  Future<void> _createCustomerMarkers() async {
+    if (customerAnnotationManager == null || _mapProvider.customers.isEmpty) return;
+    
+    try {
+      await _createMarkersForCustomers(_mapProvider.customers, customerAnnotationManager!);
+      print('Created ${_mapProvider.customers.length} customer markers');
+    } catch (e) {
+      print('Error creating customer markers: $e');
     }
   }
 
@@ -445,6 +485,79 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _createMarkersForCustomers(List<Customer> customers, mb.PointAnnotationManager manager) async {
+    try {
+      // Wait for assets to be preloaded if possible
+      if (!_assetsPreloaded) {
+        await _preloadMarkerAssets();
+      }
+      
+      // Process markers in smaller batches to avoid overwhelming memory
+      const int batchSize = 10;
+      for (int i = 0; i < customers.length; i += batchSize) {
+        final int end = (i + batchSize < customers.length) 
+            ? i + batchSize 
+            : customers.length;
+            
+        final List<mb.PointAnnotationOptions> markerBatch = [];
+        
+        // Process the current batch
+        for (int j = i; j < end; j++) {
+          final customer = customers[j];
+          
+          if (customer.geoLocation?.latitude == null || 
+              customer.geoLocation?.longitude == null ||
+              customer.customerId == null) {
+            continue;
+          }
+          
+          try {
+            // Use the blue customer pin for all customers
+            final markerAsset = Assets.BLUE_CUSTOMER_PIN;
+            
+            // Use cached image if available, otherwise load it
+            Uint8List? markerImageBytes = _markerImageCache[markerAsset];
+            if (markerImageBytes == null) {
+              final ByteData bytes = await rootBundle.load(markerAsset);
+              markerImageBytes = bytes.buffer.asUint8List();
+              _markerImageCache[markerAsset] = markerImageBytes;
+            }
+            
+            // Create point annotation options with minimal properties
+            final markerOption = mb.PointAnnotationOptions(
+              geometry: mb.Point(
+                coordinates: mb.Position(
+                  customer.geoLocation!.longitude!,
+                  customer.geoLocation!.latitude!,
+                ),
+              ),
+              image: markerImageBytes,
+              iconSize: 0.15, // Keep size small to reduce memory usage
+            );
+            
+            markerBatch.add(markerOption);
+          } catch (e) {
+            print('Error creating marker for customer ${customer.customerId}: $e');
+          }
+        }
+        
+        // Add the batch of markers to the map
+        if (markerBatch.isNotEmpty) {
+          try {
+            await manager.createMulti(markerBatch);
+          } catch (e) {
+            print('Error adding customer marker batch: $e');
+          }
+        }
+        
+        // Small delay to allow UI to update and prevent ANR
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    } catch (e) {
+      print('Error in _createMarkersForCustomers: $e');
+    }
+  }
+
   void _updateBronzeMarkers() async {
     try {
       if (bronzeAnnotationManager != null) {
@@ -484,6 +597,20 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       print('Error updating gold markers: $e');
+    }
+  }
+
+  void _updateCustomerMarkers() async {
+    try {
+      if (customerAnnotationManager != null) {
+        await customerAnnotationManager!.deleteAll();
+        
+        if (_mapProvider.showCustomers) {
+          await _createCustomerMarkers();
+        }
+      }
+    } catch (e) {
+      print('Error updating customer markers: $e');
     }
   }
 
@@ -610,6 +737,9 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'gold':
         _updateGoldMarkers();
+        break;
+      case 'customers':
+        _updateCustomerMarkers();
         break;
     }
   }

@@ -19,7 +19,10 @@ class Assets {
   static String BLUE_CUSTOMER_PIN = IMAGES + 'blue-marker.png';
   static String VISIT_PURPLE_PIN = IMAGES + 'visit-purple.png';
 
-  //customer-store markers assests
+  //Store Filter markers
+  static String BRONZE = IMAGES + 'bronze-icon.png';
+  static String SILVER = IMAGES + 'silver-icon.png';
+  static String GOLD = IMAGES + 'gold-icon.png';
 
   //bronze
   static String BRONZE_GRAY = IMAGES + 'bronze-gray.png';
